@@ -20,16 +20,23 @@ const ProductCard = ({ product }) => {
           {product.name}
         </h3>
         <p className="text-gray-600 text-sm mb-4 line-clamp-2 h-12">
-          {product.description}
+          {product.description || 'No description available.'}
         </p>
         <div className="flex items-center justify-between">
           <span className="text-2xl font-bold text-wood-800">${product.price.toFixed(2)}</span>
-          <button
+          {/* <button
             onClick={() => addToCart(product)}
-            className="bg-gradient-to-r from-wood-600 to-gold-600 text-white px-6 py-2 rounded-xl font-semibold hover:from-wood-700 hover:to-gold-500 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+            className="bg-gradient-to-r from-wood-600 to-gold-600 text-blue-950 px-6 py-2 rounded-xl font-semibold hover:from-wood-700 hover:to-gold-500 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
           >
             Add to Cart
-          </button>
+          </button> */}
+          <button
+  onClick={() => addToCart(product)}
+  className="bg-gradient-to-r from-wood-600 to-gold-600 text-blue-950 px-4 py-2 rounded-md font-medium hover:from-wood-700 hover:to-gold-500 transition-all duration-300 shadow-sm hover:shadow-md"
+>
+  Add to Cart
+</button>
+
         </div>
       </div>
     </div>

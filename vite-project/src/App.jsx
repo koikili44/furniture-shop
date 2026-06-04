@@ -1,40 +1,47 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { CartProvider } from './contexts/CartContext';
+import { AuthProvider } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
 import Products from './components/Products';
 import Cart from './components/Cart';
 import Checkout from './components/Checkout';
-import TodoList from './components/TodoList';
+import Login from './components/Login';
+import Register from './components/Register';
 import Hero from './components/Hero';
+import Footer from './components/Footer';
 
 function App() {
-  const [showCart, setShowCart] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
   return (
-    <CartProvider>
-      <Router>
-        <div className="App">
-          <Navbar setShowCart={setShowCart} />
-          
-          <Routes>
-            <Route path="/" element={
-              <>
-                <Hero />
-                <Products />
-              </>
-            } />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/goals" element={<TodoList />} />
-          </Routes>
-          
-          <Cart 
-            isOpen={showCart} 
-            onClose={() => setShowCart(false)} 
-          />
-        </div>
-      </Router>
-    </CartProvider>
+    <AuthProvider>
+      <CartProvider>
+        <Router>
+          <div className="App">
+            <Navbar openCart={() => setIsCartOpen(true)} />
+
+            <Routes>
+              <Route path="/" element={
+                <>
+                  <Hero />
+                  <Products />
+                </>
+              } />
+              <Route path="/checkout" element={<Checkout />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+            </Routes>
+
+            <Footer />
+
+            {isCartOpen && (
+              <Cart closeCart={() => setIsCartOpen(false)} />
+            )}
+          </div>
+        </Router>
+      </CartProvider>
+    </AuthProvider>
   );
 }
 

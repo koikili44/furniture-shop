@@ -1,44 +1,68 @@
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useCart } from '../contexts/CartContext';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-const stripePromise = loadStripe('pk_test_51ABC123...your_publishable_key_here...'); // Replace with your Stripe test key
-
-const CheckoutForm = () => {
-  const stripe = useStripe();
-  const elements = useElements();
-  const { cart, clearCart, totalPrice } = useCart();
+const Checkout = () => {
+  const { clearCart, totalPrice } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('status') === 'success') {
+      setSuccess(true);
+    }
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!stripe || !elements) return;
-
     setLoading(true);
     setError('');
 
-    // Simulate backend payment intent creation
-    // In real app, call your /create-payment-intent API
-    const { error: backendError } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: window.location.href,
-      },
-    });
+    try {
+      const form = e.currentTarget;
+      const formData = new FormData(form);
 
-    if (backendError) {
-      setError(backendError.message);
-    } else {
-      setSuccess(true);
+      const email = formData.get('email');
+      const amount = totalPrice; // assumes your backend/gateway expects minor units or that you will set currency accordingly.
+
+      if (!email) throw new Error('Email is required');
+
+      // Convert to minor units if your app uses NGN with 2 decimals.
+      // Paystack requires amount in kobo (minor units).
+      const amountKobo = Math.round(Number(amount) * 100);
+
+      const res = await fetch(`${API_URL}/paystack/initialize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          amount: amountKobo,
+          orderId: `ORDER_${Date.now()}`,
+          metadata: {
+            // attach any useful info for reconciliation
+          }
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to initialize Paystack payment');
+
+      const authorizationUrl = data?.authorization_url;
+      if (!authorizationUrl) throw new Error('Missing authorization_url from Paystack');
+
+      // Clear cart now (optional). If you prefer clearing only after webhook, remove this.
       clearCart();
-    }
 
-    setLoading(false);
+      window.location.href = authorizationUrl;
+    } catch (err) {
+      setError(err.message || 'Payment failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (success) {
@@ -63,17 +87,43 @@ const CheckoutForm = () => {
       <div>
         <h3 className="text-lg font-semibold mb-4">Shipping Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input type="text" placeholder="Full Name" required className="w-full p-4 border border-gray-200 rounded-xl focus:border-gold-400 focus:outline-none transition-colors" />
-          <input type="email" placeholder="Email" required className="w-full p-4 border border-gray-200 rounded-xl focus:border-gold-400 focus:outline-none transition-colors" />
-          <input type="text" placeholder="Address" required className="w-full p-4 border border-gray-200 rounded-xl focus:border-gold-400 focus:outline-none transition-colors" />
-          <input type="text" placeholder="City" required className="w-full p-4 border border-gray-200 rounded-xl focus:border-gold-400 focus:outline-none transition-colors" />
+          <input
+            type="text"
+            name="fullName"
+            placeholder="Full Name"
+            required
+            className="w-full p-4 border border-gray-200 rounded-xl focus:border-gold-400 focus:outline-none transition-colors"
+          />
+          <input
+            type="email"
+            name="email"
+            placeholder="Email"
+            required
+            className="w-full p-4 border border-gray-200 rounded-xl focus:border-gold-400 focus:outline-none transition-colors"
+          />
+          <input
+            type="text"
+            name="address"
+            placeholder="Address"
+            required
+            className="w-full p-4 border border-gray-200 rounded-xl focus:border-gold-400 focus:outline-none transition-colors"
+          />
+          <input
+            type="text"
+            name="city"
+            placeholder="City"
+            required
+            className="w-full p-4 border border-gray-200 rounded-xl focus:border-gold-400 focus:outline-none transition-colors"
+          />
         </div>
       </div>
 
       <div>
         <h3 className="text-lg font-semibold mb-4">Payment Information</h3>
         <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl">
-          <CardElement className="bg-white p-4 rounded-xl" options={{ style: { base: { fontSize: '16px' } } }} />
+          <p className="text-gray-700">
+            You’ll be redirected to Paystack to complete your payment.
+          </p>
         </div>
         {error && <div className="text-red-600 bg-red-50 p-4 rounded-xl mt-2">{error}</div>}
       </div>
@@ -87,17 +137,17 @@ const CheckoutForm = () => {
         </Link>
         <button
           type="submit"
-          disabled={!stripe || loading}
-          className="flex-1 bg-gradient-to-r from-wood-600 to-gold-600 text-white px-6 py-4 rounded-xl font-bold text-lg hover:from-wood-700 hover:to-gold-500 transition-all shadow-xl hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          disabled={loading}
+          className="flex-1 bg-orange-500 hover:bg-orange-600 text-white px-6 py-4 rounded-xl font-bold text-lg transition-all shadow-xl flex items-center justify-center disabled:opacity-50"
         >
-          {loading ? 'Processing...' : `Pay $${totalPrice.toFixed(2)}`}
+          {loading ? 'Redirecting...' : `Pay $${totalPrice.toFixed(2)}`}
         </button>
       </div>
     </form>
   );
 };
 
-const Checkout = () => {
+export default function CheckoutPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-4xl mx-auto">
@@ -106,15 +156,12 @@ const Checkout = () => {
             <h1 className="text-3xl font-bold">Checkout</h1>
           </div>
           <div className="p-8">
-            <Elements stripe={stripePromise}>
-              <CheckoutForm />
-            </Elements>
+            <Checkout />
           </div>
         </div>
       </div>
     </div>
   );
-};
+}
 
-export default Checkout;
 
