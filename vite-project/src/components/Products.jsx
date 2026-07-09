@@ -106,8 +106,8 @@ const Products = () => {
     const loadProducts = async () => {
       try {
         setLoading(true);
-        const res = await fetch('http://localhost:5000/api/v1/products');
-
+        const res = await fetch('https://furniture-shop-0zy6.onrender.com/api/v1/products');
+        
         const data = await res.json();
         const mapped = (data.data || []).map(p => ({
           ...p,
